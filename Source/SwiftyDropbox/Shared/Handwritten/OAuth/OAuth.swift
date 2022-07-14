@@ -581,7 +581,8 @@ public enum DropboxOAuthResult {
 
 class Keychain {
     static let checkAccessibilityMigrationOneTime: () = {
-       Keychain.checkAccessibilityMigration()
+        Keychain.checkAccessibilityMigration()
+        Keychain.checkKeychainTypeMigration()
     }()
 
     class func queryWithDict(_ query: [String : AnyObject]) -> CFDictionary {
