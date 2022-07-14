@@ -707,15 +707,15 @@ class Keychain {
             kSecAttrService as String: "\(bundleIdentifier).dropbox.authv2"
         ]
         
-        let updateQuery: [String: Any] = [
+        let attributes: [String: Any] = [
             kSecUseDataProtectionKeychain as String: true
         ]
         
-        let result = SecItemUpdate(query as CFDictionary, updateQuery as CFDictionary)
-        if result == noErr {
+        let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+        if status == errSecItemNotFound || status == errSecSuccess {
             UserDefaults.standard.set(true, forKey: keychainTypeMigrationOccurredKey)
         } else {
-            print("Failed Dropbox key migration with status \(result)")
+            print("Failed Dropbox key migration with status \(status)")
         }
     }
 }
