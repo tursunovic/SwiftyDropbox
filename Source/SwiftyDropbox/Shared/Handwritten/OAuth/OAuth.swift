@@ -701,10 +701,9 @@ class Keychain {
         }
         
         let bundleIdentifier = Bundle.main.bundleIdentifier ?? ""
-        let service = ""
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: "\(bundleId).dropbox.authv2"
+            kSecAttrService as String: "\(bundleIdentifier).dropbox.authv2"
         ]
         
         let updateQuery: [String: Any] = [
@@ -715,7 +714,7 @@ class Keychain {
         if result == noErr {
             UserDefaults.standard.set(true, forKey: keychainTypeMigrationOccurredKey)
         } else {
-            print("Failed Dropbox key migration with status \(status)""
+            print("Failed Dropbox key migration with status \(result)")
         }
     }
 }
