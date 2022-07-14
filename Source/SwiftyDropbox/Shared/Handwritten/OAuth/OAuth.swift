@@ -702,15 +702,29 @@ class Keychain {
         }
         
         // Get all users
-        let users = getAll()
-        guard users.isEmpty else {
+        let bundleIdentifier = Bundle.main.bundleIdentifier ?? ""
+        let service = "\(bundleIdentifier).dropbox.authv2"
+        var users: [String] = []
+        let query: [String: AnyObject] = [
+            (kSecClass as String): kSecClassGenericPassword,
+            (kSecAttrService as String): service as AnyObject,
+            (kSecAttrAccessible as String): kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+            (kSecReturnAttributes as String): kCFBooleanTrue,
+            (kSecMatchLimit as String): kSecMatchLimitAll
+        ]
+        var dataResult: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &dataResult)
+        if status == noErr {
+            let results = dataResult as? [[String : AnyObject]] ?? []
+            users = results.map { d in d["acct"] as! String }
+        }
+        
+        if users.isEmpty {
             UserDefaults.standard.set(true, forKey: keychainTypeMigrationOccurredKey)
             return
         }
         
         // Obtain tokens for each user
-        let bundleIdentifier = Bundle.main.bundleIdentifier ?? ""
-        let service = "\(bundleIdentifier).dropbox.authv2"
         var pendingMigrations: [(key: String, value: Data)] = []
         for user in users {
             let query: [String: AnyObject] = [
