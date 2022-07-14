@@ -591,6 +591,7 @@ class Keychain {
         queryDict[kSecClass as String]       = kSecClassGenericPassword
         queryDict[kSecAttrService as String] = "\(bundleId).dropbox.authv2" as AnyObject?
         queryDict[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        queryDict[kSecUseDataProtectionKeychain as String] = true
 
         return queryDict as CFDictionary
     }
@@ -689,6 +690,32 @@ class Keychain {
             let attributesToUpdateDict = [kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly]
             SecItemUpdate(queryDict as CFDictionary, attributesToUpdateDict as CFDictionary)
             UserDefaults.standard.set("true", forKey: kAccessibilityMigrationOccurredKey)
+        }
+    }
+    
+    class func checkKeychainTypeMigration() {
+        let keychainTypeMigrationOccurredKey = "DropboxKeychainTypeMigration"
+        let keychainTypeMigrationOccurred = UserDefaults.standard.bool(forKey: keychainTypeMigrationOccurredKey)
+        if keychainTypeMigrationOccurred {
+            return
+        }
+        
+        let bundleIdentifier = Bundle.main.bundleIdentifier ?? ""
+        let service = ""
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: "\(bundleId).dropbox.authv2"
+        ]
+        
+        let updateQuery: [String: Any] = [
+            kSecUseDataProtectionKeychain as String: true
+        ]
+        
+        let result = SecItemUpdate(query as CFDictionary, updateQuery as CFDictionary)
+        if result == noErr {
+            UserDefaults.standard.set(true, forKey: keychainTypeMigrationOccurredKey)
+        } else {
+            print("Failed Dropbox key migration with status \(status)""
         }
     }
 }
