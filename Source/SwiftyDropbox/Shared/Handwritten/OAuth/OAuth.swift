@@ -701,7 +701,7 @@ class Keychain {
             return
         }
         
-        // Get all users
+        // Obtain the user ID's for which we've stored the tokens.
         let bundleIdentifier = Bundle.main.bundleIdentifier ?? ""
         let service = "\(bundleIdentifier).dropbox.authv2"
         var users: [String] = []
@@ -724,7 +724,7 @@ class Keychain {
             return
         }
         
-        // Obtain tokens for each user
+        // Obtain the associated token for each user ID.
         var pendingMigrations: [(key: String, value: Data)] = []
         for user in users {
             let query: [String: AnyObject] = [
@@ -744,7 +744,7 @@ class Keychain {
             }
         }
         
-        // Create new item for each user with token
+        // Create a new keychain item with protected keychain option
         for item in pendingMigrations {
             let query: [String: AnyObject] = [
                 (kSecReturnData as String): kCFBooleanTrue,
@@ -760,6 +760,16 @@ class Keychain {
             SecItemDelete(query as CFDictionary)
             SecItemAdd(query as CFDictionary, nil)
         }
+        
+        // Remove legacy items
+        let deleteQuery: [String: AnyObject] = [
+            (kSecClass as String): kSecClassGenericPassword,
+            (kSecAttrService as String): service as AnyObject,
+            (kSecAttrAccessible as String): kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+            (kSecUseDataProtectionKeychain as String): false as AnyObject,
+        ]
+        SecItemDelete(deleteQuery as CFDictionary)
+        
         
         UserDefaults.standard.set(true, forKey: keychainTypeMigrationOccurredKey)
     }
