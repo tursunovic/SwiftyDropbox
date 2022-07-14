@@ -701,22 +701,53 @@ class Keychain {
             return
         }
         
-        let bundleIdentifier = Bundle.main.bundleIdentifier ?? ""
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: "\(bundleIdentifier).dropbox.authv2"
-        ]
-        
-        let attributes: [String: Any] = [
-            kSecUseDataProtectionKeychain as String: true
-        ]
-        
-        let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
-        if status == errSecItemNotFound || status == errSecSuccess {
+        // Get all users
+        let users = getAll()
+        guard users.isEmpty else {
             UserDefaults.standard.set(true, forKey: keychainTypeMigrationOccurredKey)
-        } else {
-            print("Failed Dropbox key migration with status \(status)")
+            return
         }
+        
+        // Obtain tokens for each user
+        let bundleIdentifier = Bundle.main.bundleIdentifier ?? ""
+        let service = "\(bundleIdentifier).dropbox.authv2"
+        var pendingMigrations: [(key: String, value: Data)] = []
+        for user in users {
+            let query: [String: AnyObject] = [
+                (kSecAttrAccount as String): user as AnyObject,
+                (kSecAttrService as String): service as AnyObject,
+                (kSecReturnData as String): kCFBooleanTrue,
+                (kSecMatchLimit as String): kSecMatchLimitOne,
+                (kSecClass as String): kSecClassGenericPassword,
+                (kSecAttrAccessible as String): kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+            ]
+
+            var dataResult: AnyObject?
+            let status = SecItemCopyMatching(query as CFDictionary, &dataResult)
+            
+            if status == noErr, let data = dataResult as? Data {
+                pendingMigrations.append((key: user, value: data))
+            }
+        }
+        
+        // Create new item for each user with token
+        for item in pendingMigrations {
+            let query: [String: AnyObject] = [
+                (kSecReturnData as String): kCFBooleanTrue,
+                (kSecMatchLimit as String): kSecMatchLimitOne,
+                (kSecClass as String): kSecClassGenericPassword,
+                (kSecAttrService as String): service as AnyObject,
+                (kSecAttrAccessible as String): kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+                (kSecUseDataProtectionKeychain as String): true as AnyObject,
+                (kSecAttrAccount as String): item.key as AnyObject,
+                (kSecValueData as String): item.value as AnyObject,
+            ]
+            
+            SecItemDelete(query as CFDictionary)
+            SecItemAdd(query as CFDictionary, nil)
+        }
+        
+        UserDefaults.standard.set(true, forKey: keychainTypeMigrationOccurredKey)
     }
 }
 
